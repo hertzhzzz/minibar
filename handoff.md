@@ -33,8 +33,8 @@
 ---
 
 ## 3. 项目文档索引
-- **底层架构与技术调研**：`minibar/RESEARCH.md`
-- **系统产品功能规格书**：`minibar/SPEC.md`
+- **底层架构与技术调研**：`plan/research/RESEARCH.md`
+- **系统产品功能规格书**：`plan/research/SPEC.md`
 
 ---
 
