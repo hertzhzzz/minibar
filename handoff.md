@@ -1,7 +1,7 @@
 # MiniBar 开发交接文档 (Handoff Document)
 
-> **当前阶段**：前期调研 (Research)、设计树推演 (Grilling)、产品规格书 (Spec) 与任务拆解 (Tickets) 已全部闭环。
-> **下一阶段目标**：启动 **Ticket 1 (Issue #1)** 的编码与 TDD 自动化测试验证。
+> **当前阶段**：Ticket 1 已完成构建、测试并通过双轴审查，代码已合并并推送到 main 分支。
+> **下一阶段目标**：启动 **Ticket 2 (Issue #2): Window Scanner & Retina Icon Capture**。
 
 ---
 
@@ -50,8 +50,8 @@
 
 | 编号 | 任务标题 | 状态 | 依赖 (Blocked By) | Issue 链接 |
 | :--- | :--- | :--- | :--- | :--- |
-| **#1** | **Ticket 1: App Scaffold, Status Items & Spacer Push** | 🚀 **Ready for Agent (当前前沿)** | 无，可立即启动 | [#1](https://github.com/hertzhzzz/minibar/issues/1) |
-| **#2** | **Ticket 2: Window Scanner & Retina Icon Capture** | 🔒 Blocked | #1 | [#2](https://github.com/hertzhzzz/minibar/issues/2) |
+| **#1** | **Ticket 1: App Scaffold, Status Items & Spacer Push** | ✅ **Done (Commit `0631def`)** | 无 | [#1](https://github.com/hertzhzzz/minibar/issues/1) |
+| **#2** | **Ticket 2: Window Scanner & Retina Icon Capture** | 🚀 **Ready for Agent (当前前沿)** | #1 (已解封) | [#2](https://github.com/hertzhzzz/minibar/issues/2) |
 | **#3** | **Ticket 3: SwiftUI Popover Grid & Lifecycle** | 🔒 Blocked | #2 | [#3](https://github.com/hertzhzzz/minibar/issues/3) |
 | **#4** | **Ticket 4: Double-Track Click Proxy Service** | 🔒 Blocked | #3 | [#4](https://github.com/hertzhzzz/minibar/issues/4) |
 | **#5** | **Ticket 5: Arrange Mode & Drag-to-Toggle** | 🔒 Blocked | #4 | [#5](https://github.com/hertzhzzz/minibar/issues/5) |
@@ -62,15 +62,16 @@
 ## 5. 下一个会话执行指引 (Next Session Action Plan)
 
 接手本项目的 Agent 应执行以下步骤：
-1. **领取任务**：进入 `minibar` 目录，针对 [Issue #1](https://github.com/hertzhzzz/minibar/issues/1) 开展工作。
-2. **构建脚手架**：
-   - 创建 `Package.swift`，配置为 macOS 14+ 平台，设置 `MiniBar` 可执行目标与 `MiniBarTests` 测试目标。
-   - 编写 `StatusItemCoordinator`，在系统状态栏渲染 SF Symbol `menubar.dock.rectangle` 的 ControlItem 与不可见 DividerItem。
-   - 实现点击切换 `DividerItem.length` 在 10,000 pt 和常规宽度之间的推挤折叠逻辑。
+1. **领取前沿任务**：针对 [Issue #2](https://github.com/hertzhzzz/minibar/issues/2) (Window Scanner & Retina Icon Capture) 开展工作。
+2. **实现范围**：
+   - 编写 `MenuBarScanner` 获取 `layer == 25` 的状态栏窗口列表。
+   - 过滤系统硬性锁定的不可移动项（Clock, BentoBox），保留第三方及可移动系统项（Battery, Wi-Fi）。
+   - 编写纯函数 Alpha 边界裁切算法（RGBA 像素遍历，裁切掉透明边距），通过单元测试覆盖。
+   - 使用 `CGWindowListCreateImage` 捕获 64×66 Retina 2x 图标。
 3. **验证测试**：
-   - 编写单元测试并运行 `DEVELOPER_DIR=/Library/Developer/CommandLineTools swift test`。
-4. **提交与关闭 Issue**：
-   - 提交代码并推送至 `main` 分支，关闭 Issue #1，解锁 Issue #2。
+   - 运行 `DYLD_LIBRARY_PATH=/Library/Developer/CommandLineTools/usr/lib/swift/host DEVELOPER_DIR=/Library/Developer/CommandLineTools swift test` 确保测试全部通过。
+4. **代码审查与提交**：
+   - 运行双轴审查并提交代码，关闭 Issue #2。
 
 ---
 
