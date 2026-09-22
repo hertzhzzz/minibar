@@ -33,6 +33,12 @@
 ---
 
 ## 3. 项目文档索引
+- **领域词汇表与概念模型**：`CONTEXT.md`
+- **架构设计决策记录 (ADRs)**：`docs/adr/`
+  - `0001-spacer-push-for-icon-hiding.md`
+  - `0002-popover-grid-interface.md`
+  - `0003-double-track-click-proxy.md`
+  - `0004-immovable-system-items-boundary.md`
 - **底层架构与技术调研**：`plan/research/RESEARCH.md`
 - **系统产品功能规格书**：`plan/research/SPEC.md`
 
