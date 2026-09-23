@@ -1,3 +1,4 @@
+import Combine
 import SwiftUI
 import CoreGraphics
 
@@ -7,12 +8,20 @@ public struct PopoverItemViewModel: Identifiable, Sendable {
     public let title: String
     public let ownerName: String
     public let icon: CGImage?
+    public let pinState: PinState
 
-    public init(id: CGWindowID, title: String, ownerName: String, icon: CGImage?) {
+    public init(
+        id: CGWindowID,
+        title: String,
+        ownerName: String,
+        icon: CGImage?,
+        pinState: PinState = .unpinned
+    ) {
         self.id = id
         self.title = title
         self.ownerName = ownerName
         self.icon = icon
+        self.pinState = pinState
     }
 
     public var displayName: String {
@@ -22,9 +31,27 @@ public struct PopoverItemViewModel: Identifiable, Sendable {
     }
 }
 
+/// Observable session state for the popover grid, including Arrange Mode.
+@MainActor
+public final class PopoverContentModel: ObservableObject {
+    @Published public var items: [PopoverItemViewModel]
+    @Published public var isArrangeMode: Bool
+    @Published public var busyWindowID: CGWindowID?
+
+    public init(
+        items: [PopoverItemViewModel] = [],
+        isArrangeMode: Bool = false,
+        busyWindowID: CGWindowID? = nil
+    ) {
+        self.items = items
+        self.isArrangeMode = isArrangeMode
+        self.busyWindowID = busyWindowID
+    }
+}
+
 /// SwiftUI Popover grid view that displays captured status item icons in a 4-column layout.
 public struct PopoverGridView: View {
-    public let items: [PopoverItemViewModel]
+    @ObservedObject public var model: PopoverContentModel
     public let onItemClicked: ((PopoverItemViewModel) -> Void)?
 
     private let columns = [
@@ -32,11 +59,15 @@ public struct PopoverGridView: View {
     ]
 
     public init(
-        items: [PopoverItemViewModel],
+        model: PopoverContentModel,
         onItemClicked: ((PopoverItemViewModel) -> Void)? = nil
     ) {
-        self.items = items
+        self.model = model
         self.onItemClicked = onItemClicked
+    }
+
+    private var displayedItems: [PopoverItemViewModel] {
+        ItemLayout.visibleItems(model.items, arrangeMode: model.isArrangeMode)
     }
 
     public var body: some View {
@@ -46,13 +77,15 @@ public struct PopoverGridView: View {
                     .font(.system(size: 11, weight: .bold))
                     .foregroundColor(.secondary)
                 Spacer()
-                Text("\(items.count) items")
+                Toggle("Arrange", isOn: $model.isArrangeMode)
+                    .toggleStyle(.switch)
+                    .controlSize(.mini)
                     .font(.system(size: 10))
-                    .foregroundColor(.secondary.opacity(0.8))
+                    .disabled(model.busyWindowID != nil)
             }
             .padding(.horizontal, 4)
 
-            if items.isEmpty {
+            if displayedItems.isEmpty {
                 VStack(spacing: 6) {
                     Image(systemName: "tray")
                         .font(.system(size: 20))
@@ -64,28 +97,14 @@ public struct PopoverGridView: View {
                 .frame(maxWidth: .infinity, minHeight: 60)
             } else {
                 LazyVGrid(columns: columns, spacing: 8) {
-                    ForEach(items) { item in
+                    ForEach(displayedItems) { item in
                         Button(action: {
                             onItemClicked?(item)
                         }) {
-                            ZStack {
-                                RoundedRectangle(cornerRadius: 6, style: .continuous)
-                                    .fill(Color.primary.opacity(0.05))
-                                    .frame(width: 38, height: 38)
-
-                                if let cgImage = item.icon {
-                                    Image(decorative: cgImage, scale: 2.0)
-                                        .resizable()
-                                        .aspectRatio(contentMode: .fit)
-                                        .frame(width: 22, height: 22)
-                                } else {
-                                    Image(systemName: "app.dashed")
-                                        .font(.system(size: 16))
-                                        .foregroundColor(.secondary)
-                                }
-                            }
+                            iconCell(for: item)
                         }
                         .buttonStyle(.plain)
+                        .disabled(model.busyWindowID != nil)
                         .help("\(item.displayName)")
                     }
                 }
@@ -94,5 +113,37 @@ public struct PopoverGridView: View {
         .padding(12)
         .frame(minWidth: 190, maxWidth: 220)
         .background(.ultraThinMaterial)
+    }
+
+    @ViewBuilder
+    private func iconCell(for item: PopoverItemViewModel) -> some View {
+        ZStack {
+            RoundedRectangle(cornerRadius: 6, style: .continuous)
+                .fill(Color.primary.opacity(0.05))
+
+            if model.busyWindowID == item.id {
+                ProgressView()
+                    .controlSize(.small)
+            } else if let cgImage = item.icon {
+                Image(decorative: cgImage, scale: 2.0)
+                    .resizable()
+                    .aspectRatio(contentMode: .fit)
+                    .frame(width: 22, height: 22)
+            } else {
+                Image(systemName: "app.dashed")
+                    .font(.system(size: 16))
+                    .foregroundColor(.secondary)
+            }
+        }
+        .frame(width: 38, height: 38)
+        .overlay(alignment: .bottomTrailing) {
+            if model.isArrangeMode {
+                Circle()
+                    .fill(item.pinState == .pinned ? Color.blue : Color.gray)
+                    .frame(width: 7, height: 7)
+                    .padding(4)
+                    .accessibilityLabel(item.pinState == .pinned ? "Pinned" : "Unpinned")
+            }
+        }
     }
 }

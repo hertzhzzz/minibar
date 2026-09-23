@@ -82,4 +82,25 @@ struct StatusItemCoordinatorTests {
         coordinator.controlItem?.action?()
         #expect(coordinator.dividerItem?.length == 10000)
     }
+
+    @Test func handlePopoverDidClose_foldsWhenExpanded() {
+        let fakeStatusBar = FakeStatusBarInstaller()
+        let coordinator = StatusItemCoordinator(statusBar: fakeStatusBar)
+        coordinator.register()
+
+        coordinator.toggle()
+        #expect(coordinator.dividerItem?.length == dividerExpandedLength)
+
+        coordinator.handlePopoverDidClose()
+        #expect(coordinator.dividerItem?.length == dividerFoldedLength)
+    }
+
+    @Test func handlePopoverDidClose_leavesFoldedStateUnchanged() {
+        let fakeStatusBar = FakeStatusBarInstaller()
+        let coordinator = StatusItemCoordinator(statusBar: fakeStatusBar)
+        coordinator.register()
+
+        coordinator.handlePopoverDidClose()
+        #expect(coordinator.dividerItem?.length == dividerFoldedLength)
+    }
 }

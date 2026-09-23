@@ -98,6 +98,21 @@ struct MenuBarScannerTests {
         #expect(result.managed.first?.windowID == 11)
     }
 
+    @Test func scanner_scanOwnStatusWindows_returnsOnlyCurrentProcess() {
+        let currentPID = ProcessInfo.processInfo.processIdentifier
+        let rawList: [[String: Any]] = [
+            makeRawWindow(windowID: 10, layer: 25, ownerPID: currentPID, ownerName: "MiniBar", title: "Item-0", x: 900, width: 24),
+            makeRawWindow(windowID: 12, layer: 25, ownerPID: currentPID, ownerName: "MiniBar", title: "Item-1", x: 800, width: 8),
+            makeRawWindow(windowID: 11, layer: 25, ownerPID: 500, ownerName: "OneDrive", title: "OneDrive")
+        ]
+
+        let scanner = MenuBarScanner(windowProvider: MockWindowListProvider(windows: rawList))
+        let own = scanner.scanOwnStatusWindows()
+
+        #expect(Set(own.map(\.windowID)) == [10, 12])
+        #expect(ItemLayout.dividerBounds(from: own)?.minX == 800)
+    }
+
     @Test func immovableItems_clockAndBentoBox_areCategorizedAsImmovable() {
         let rawList: [[String: Any]] = [
             makeRawWindow(windowID: 20, layer: 25, ownerPID: 600, ownerName: "Control Centre", title: "Clock"),

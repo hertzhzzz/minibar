@@ -122,14 +122,33 @@ public final class MenuBarScanner: Sendable {
         return false
     }
 
+    /// Scans MiniBar's own layer-25 status item windows (Control Item and Divider Item).
+    public func scanOwnStatusWindows() -> [StatusItemWindow] {
+        parseStatusWindows(matchingPID: ProcessInfo.processInfo.processIdentifier)
+    }
+
     /// Scans WindowServer windows with layer == 25, categorizing them into managed items and immovable items.
     /// Excludes windows owned by the current process (MiniBar's own Control & Divider items).
     public func scanStatusWindows() -> (managed: [StatusItemWindow], immovable: [StatusItemWindow]) {
-        let rawWindows = windowProvider.copyWindowInfoList()
         let currentPID = ProcessInfo.processInfo.processIdentifier
+        let foreign = parseStatusWindows(excludingPID: currentPID)
 
         var managed: [StatusItemWindow] = []
         var immovable: [StatusItemWindow] = []
+        for item in foreign {
+            if item.isImmovable {
+                immovable.append(item)
+            } else {
+                managed.append(item)
+            }
+        }
+
+        return (managed: managed, immovable: immovable)
+    }
+
+    private func parseStatusWindows(excludingPID: pid_t? = nil, matchingPID: pid_t? = nil) -> [StatusItemWindow] {
+        let rawWindows = windowProvider.copyWindowInfoList()
+        var items: [StatusItemWindow] = []
 
         for dict in rawWindows {
             guard let layer = dict[kCGWindowLayer as String] as? Int, layer == 25 else {
@@ -137,8 +156,11 @@ public final class MenuBarScanner: Sendable {
             }
 
             let pid = dict[kCGWindowOwnerPID as String] as? pid_t ?? 0
-            if pid == currentPID {
-                continue // Ignore MiniBar's own status items
+            if let excludingPID, pid == excludingPID {
+                continue
+            }
+            if let matchingPID, pid != matchingPID {
+                continue
             }
 
             let windowID = dict[kCGWindowNumber as String] as? CGWindowID ?? 0
@@ -154,23 +176,19 @@ public final class MenuBarScanner: Sendable {
 
             let immovableStatus = Self.isImmovable(ownerName: ownerName, title: title)
 
-            let item = StatusItemWindow(
-                windowID: windowID,
-                ownerPID: pid,
-                ownerName: ownerName,
-                title: title,
-                bounds: bounds,
-                isImmovable: immovableStatus
+            items.append(
+                StatusItemWindow(
+                    windowID: windowID,
+                    ownerPID: pid,
+                    ownerName: ownerName,
+                    title: title,
+                    bounds: bounds,
+                    isImmovable: immovableStatus
+                )
             )
-
-            if immovableStatus {
-                immovable.append(item)
-            } else {
-                managed.append(item)
-            }
         }
 
-        return (managed: managed, immovable: immovable)
+        return items
     }
 
     /// Retrieves an icon image for the given window, querying the cache first and falling back to capture.

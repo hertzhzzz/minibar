@@ -53,6 +53,10 @@ public final class StatusItemCoordinator {
         }
         controlItem = control
 
+        popoverCoordinator?.onPopoverDidClose = { [weak self] in
+            self?.handlePopoverDidClose()
+        }
+
         if let button = control.rawButton {
             popoverCoordinator?.setAnchorButton(button)
             popoverCoordinator?.onDividerMomentaryRestore = { [weak self] in
@@ -73,10 +77,25 @@ public final class StatusItemCoordinator {
         isFolded = true
     }
 
-    /// Handles click on the Control Item: toggles the popover and spacer push state.
+    /// Handles click on the Control Item: expands the Divider Item before showing
+    /// the popover so pin-state classification sees the 8pt layout, then folds
+    /// after the popover closes.
     public func handleClick() {
-        popoverCoordinator?.toggle()
-        toggle()
+        if popoverCoordinator?.isShown == true {
+            toggle()
+            popoverCoordinator?.close()
+        } else {
+            toggle()
+            popoverCoordinator?.show()
+        }
+    }
+
+    /// Folds after the popover dismisses (Control Item click or transient outside click)
+    /// so the next open always scans pin state against the 8pt Divider Item.
+    public func handlePopoverDidClose() {
+        if !isFolded {
+            toggle()
+        }
     }
 
     /// Called to toggle Spacer Push: Folded (10_000) <-> Expanded (8).
