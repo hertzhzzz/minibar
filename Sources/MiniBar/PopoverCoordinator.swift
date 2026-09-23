@@ -6,10 +6,17 @@ import SwiftUI
 public final class PopoverCoordinator: NSObject, NSPopoverDelegate {
     private let popover = NSPopover()
     private let scanner: MenuBarScanner
+    private let clickProxy: ClickProxyService
     private weak var anchorButton: NSStatusBarButton?
+    public var onDividerMomentaryRestore: (() -> Void)?
+    public var onDividerReFold: (() -> Void)?
 
-    public init(scanner: MenuBarScanner = MenuBarScanner()) {
+    public init(
+        scanner: MenuBarScanner = MenuBarScanner(),
+        clickProxy: ClickProxyService = ClickProxyService()
+    ) {
         self.scanner = scanner
+        self.clickProxy = clickProxy
         super.init()
         setupPopover()
     }
@@ -54,9 +61,18 @@ public final class PopoverCoordinator: NSObject, NSPopoverDelegate {
         }
 
         let contentView = PopoverGridView(items: viewModels) { [weak self] item in
-            // Handle item click (Ticket 4 will plug in ClickProxy here)
-            print("Clicked status item: \(item.displayName) (ID: \(item.id))")
-            self?.close()
+            guard let self = self else { return }
+            // Close the popover immediately to avoid obscuring the opened menu
+            self.close()
+
+            // Find matching window from scanned list
+            if let window = managed.first(where: { $0.windowID == item.id }) {
+                self.clickProxy.trigger(
+                    window: window,
+                    onDividerMomentaryRestore: self.onDividerMomentaryRestore,
+                    onDividerReFold: self.onDividerReFold
+                )
+            }
         }
 
         let hostingController = NSHostingController(rootView: contentView)

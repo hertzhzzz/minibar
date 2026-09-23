@@ -55,6 +55,15 @@ public final class StatusItemCoordinator {
 
         if let button = control.rawButton {
             popoverCoordinator?.setAnchorButton(button)
+            popoverCoordinator?.onDividerMomentaryRestore = { [weak self] in
+                self?.dividerItem?.length = dividerExpandedLength
+            }
+            popoverCoordinator?.onDividerReFold = { [weak self] in
+                guard let self = self else { return }
+                if self.isFolded {
+                    self.dividerItem?.length = dividerFoldedLength
+                }
+            }
         }
 
         let divider = statusBar.makeStatusItem(length: dividerFoldedLength)
