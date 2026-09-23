@@ -37,15 +37,18 @@ public final class PopoverContentModel: ObservableObject {
     @Published public var items: [PopoverItemViewModel]
     @Published public var isArrangeMode: Bool
     @Published public var busyWindowID: CGWindowID?
+    @Published public var isLaunchAtLogin: Bool
 
     public init(
         items: [PopoverItemViewModel] = [],
         isArrangeMode: Bool = false,
-        busyWindowID: CGWindowID? = nil
+        busyWindowID: CGWindowID? = nil,
+        isLaunchAtLogin: Bool = false
     ) {
         self.items = items
         self.isArrangeMode = isArrangeMode
         self.busyWindowID = busyWindowID
+        self.isLaunchAtLogin = isLaunchAtLogin
     }
 }
 
@@ -53,6 +56,8 @@ public final class PopoverContentModel: ObservableObject {
 public struct PopoverGridView: View {
     @ObservedObject public var model: PopoverContentModel
     public let onItemClicked: ((PopoverItemViewModel) -> Void)?
+    public let onLaunchAtLoginChanged: ((Bool) -> Void)?
+    public let onQuit: (() -> Void)?
 
     private let columns = [
         GridItem(.adaptive(minimum: 38, maximum: 44), spacing: 8)
@@ -60,10 +65,14 @@ public struct PopoverGridView: View {
 
     public init(
         model: PopoverContentModel,
-        onItemClicked: ((PopoverItemViewModel) -> Void)? = nil
+        onItemClicked: ((PopoverItemViewModel) -> Void)? = nil,
+        onLaunchAtLoginChanged: ((Bool) -> Void)? = nil,
+        onQuit: (() -> Void)? = nil
     ) {
         self.model = model
         self.onItemClicked = onItemClicked
+        self.onLaunchAtLoginChanged = onLaunchAtLoginChanged
+        self.onQuit = onQuit
     }
 
     private var displayedItems: [PopoverItemViewModel] {
@@ -109,6 +118,24 @@ public struct PopoverGridView: View {
                     }
                 }
             }
+
+            Divider()
+
+            Toggle("Launch at Login", isOn: Binding(
+                get: { model.isLaunchAtLogin },
+                set: { onLaunchAtLoginChanged?($0) }
+            ))
+            .toggleStyle(.checkbox)
+            .font(.system(size: 11))
+            .padding(.horizontal, 4)
+
+            Button("Quit MiniBar") {
+                onQuit?()
+            }
+            .buttonStyle(.plain)
+            .font(.system(size: 11))
+            .foregroundColor(.secondary)
+            .padding(.horizontal, 4)
         }
         .padding(12)
         .frame(minWidth: 190, maxWidth: 220)

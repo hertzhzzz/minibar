@@ -8,6 +8,7 @@ public final class PopoverCoordinator: NSObject, NSPopoverDelegate {
     private let scanner: MenuBarScanner
     private let clickProxy: ClickProxyService
     private let itemArranger: ItemArranger
+    private let launchAtLogin: LaunchAtLoginService
     private let contentModel = PopoverContentModel()
     private var managedWindows: [StatusItemWindow] = []
     private var dividerBounds: CGRect = .zero
@@ -19,11 +20,13 @@ public final class PopoverCoordinator: NSObject, NSPopoverDelegate {
     public init(
         scanner: MenuBarScanner = MenuBarScanner(),
         clickProxy: ClickProxyService = ClickProxyService(),
-        itemArranger: ItemArranger = ItemArranger()
+        itemArranger: ItemArranger = ItemArranger(),
+        launchAtLogin: LaunchAtLoginService = LaunchAtLoginService()
     ) {
         self.scanner = scanner
         self.clickProxy = clickProxy
         self.itemArranger = itemArranger
+        self.launchAtLogin = launchAtLogin
         super.init()
         setupPopover()
     }
@@ -56,12 +59,22 @@ public final class PopoverCoordinator: NSObject, NSPopoverDelegate {
 
         contentModel.isArrangeMode = false
         contentModel.busyWindowID = nil
+        contentModel.isLaunchAtLogin = launchAtLogin.isEnabled
         itemArranger.markIdle()
         refreshItems()
 
-        let contentView = PopoverGridView(model: contentModel) { [weak self] item in
-            self?.handleItemClicked(item)
-        }
+        let contentView = PopoverGridView(
+            model: contentModel,
+            onItemClicked: { [weak self] item in
+                self?.handleItemClicked(item)
+            },
+            onLaunchAtLoginChanged: { [weak self] enabled in
+                self?.handleLaunchAtLoginChanged(enabled)
+            },
+            onQuit: {
+                NSApp.terminate(nil)
+            }
+        )
 
         let hostingController = NSHostingController(rootView: contentView)
         popover.contentViewController = hostingController
@@ -120,5 +133,10 @@ public final class PopoverCoordinator: NSObject, NSPopoverDelegate {
             self.refreshItems()
             self.contentModel.busyWindowID = nil
         }
+    }
+
+    private func handleLaunchAtLoginChanged(_ enabled: Bool) {
+        try? launchAtLogin.setEnabled(enabled)
+        contentModel.isLaunchAtLogin = launchAtLogin.isEnabled
     }
 }

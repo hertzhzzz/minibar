@@ -103,4 +103,11 @@ public final class StatusItemCoordinator {
         isFolded.toggle()
         dividerItem?.length = isFolded ? dividerFoldedLength : dividerExpandedLength
     }
+
+    /// Restores the Divider Item to normal width before process exit so WindowServer
+    /// does not leave ghost spacing after MiniBar's status items are removed.
+    public func prepareForTermination() {
+        dividerItem?.length = dividerExpandedLength
+        isFolded = false
+    }
 }

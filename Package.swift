@@ -11,7 +11,8 @@ let package = Package(
             name: "MiniBar",
             linkerSettings: [
                 .linkedFramework("AppKit"),
-                .linkedFramework("SwiftUI")
+                .linkedFramework("SwiftUI"),
+                .linkedFramework("ServiceManagement")
             ]
         ),
         .testTarget(

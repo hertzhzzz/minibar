@@ -1,7 +1,7 @@
 # MiniBar 开发交接文档 (Handoff Document)
 
-> **当前阶段**：Ticket 1–5 已全部构建完成并通过单元测试（33/33 tests passed）。Ticket 5 已提交到本地 `main`（`a5e4ff4`），**尚未推送到 origin**，因此 GitHub Issue #5 仍为 Open。
-> **下一阶段目标**：启动 **Ticket 6 (Issue #6): Launch at Login & Release Polish**。
+> **当前阶段**：Ticket 1–6 已全部构建完成并通过单元测试（47/47 tests passed）。Ticket 5 已推送，GitHub Issue #5 已关闭。Ticket 6 已提交到 `main`（见下方 SHA）。
+> **下一阶段目标**：无更多 GitHub Ticket。剩余工作为实机验收（开机自启系统授权、常驻内存 < 30MB、Divider 退出恢复）。
 
 ---
 
@@ -18,11 +18,13 @@
 - **硬件环境**：Apple Silicon M2 MacBook Air (1470×956 Retina)，带物理刘海（Notch 占据 X: 646 ~ 825 pt）。
 - **工具链配置**：
   - Apple Swift 6.4 (Xcode 27.0)。
-  - 测试命令：`swift test`
-  - 构建 Release：`swift build -c release`
+  - 测试命令：`swift test` 或 `make test`
+  - 构建并运行 `.app`：`make run`（或 `scripts/run.sh`）
+  - 构建 Release：`swift build -c release` / `make app`
 - **系统权限实测**：
   - `AXIsProcessTrusted()` (辅助功能 Accessibility)：**已开启 (True)**
   - `CGPreflightScreenCaptureAccess()` (屏幕录制 Screen Recording)：**已开启 (True)**
+  - `SMAppService.mainApp`（开机自启）：**需在实机 `.app` 内勾选**，首次可能弹出「登录项」授权。
 - **系统硬性限制（核心事实）**：
   - WindowServer 硬编码锁定系统时钟 `Clock` 与控制中心 `BentoBox`，**禁止移动或隐藏**（必须保留在顶栏最右侧，详见 `docs/adr/0004-immovable-system-items-boundary.md`）。
   - 第三方应用图标及系统 `Battery`、`WiFi` 支持通过 `⌘ + Drag` 跨越推挤分隔符进行收纳与隐藏。
@@ -34,13 +36,14 @@
 1. **推挤拓扑与控制项**：
    - `StatusItemCoordinator.swift` & `NSStatusBarInstaller.swift`：管理 MiniBar 的 Control Item 与 Divider Item（10,000pt 推挤）。
    - Control Item 点击时先展开 Divider（8pt）再 `show()`，以便 pin 分类对着真实布局扫描；Popover 关闭后再折叠。
+   - `prepareForTermination()`：退出前将 Divider 恢复为 8pt，避免留下幽灵空隙。
 2. **窗口扫描与高清截图**：
    - `MenuBarScanner.swift` & `StatusItemWindow.swift`：扫描 `layer == 25` 窗口，排除自身 PID，区分可移动项与时钟/控制中心不可移动项。
    - `scanOwnStatusWindows()` 用于定位 Divider Item（自身窗口中最左侧）。
    - `CGImage+AlphaTrim.swift`：基于 32 位 RGBA 像素矩阵遍历裁剪 Alpha > 12 的透明边框。
    - `SystemWindowImageCapturer`：通过 `dlsym` 绕过 macOS 15 SDK 对 `CGWindowListCreateImage` 的弃用限制，抓取 Retina 2x 高清位图，并配合 `IconCache` 内存缓存。
 3. **SwiftUI Popover 浮层**：
-   - `PopoverGridView.swift`：4 列磨砂玻璃网格，Tooltip、Arrange Mode 开关、蓝/灰 pin 徽标、拖拽 Loading。
+   - `PopoverGridView.swift`：4 列磨砂玻璃网格，Tooltip、Arrange Mode 开关、蓝/灰 pin 徽标、拖拽 Loading、开机自启勾选、Quit。
    - `PopoverCoordinator.swift`：管理 `NSPopover` 瞬态生命周期；普通点击走 Click Proxy 并关闭；整理模式点击走 ItemArranger 并保持打开。
 4. **双轨点击代理服务**：
    - `ClickProxyService.swift`：Track 1 Accessibility，Track 2 `MenuBarUpdateMask` + 瞬态 Divider 8pt + `0x33` CGEvent。
@@ -48,6 +51,10 @@
    - `ItemLayout.swift`：pin 分类、拖拽目标 X、网格过滤纯函数。
    - `ItemArranger.swift`：合成 `⌘ + Drag` 穿越 Divider Item；0.3s 单操作防抖；`busyWindowID` Loading 状态。
    - 不可移动项（Clock / BentoBox）拒绝拖拽。
+6. **开机自启与发布打磨**：
+   - `LaunchAtLoginService.swift`：`LoginItemRegistering` 接缝 + `SMAppServiceLoginItem` 适配 `SMAppService.mainApp`。
+   - `Makefile` / `scripts/run.sh`：打包 `.build/MiniBar.app`（Info.plist、`LSUIElement`、AppIcon、adhoc codesign）。
+   - 无网络依赖；图标懒加载 + 内存缓存，避免频繁截屏告警。
 
 ---
 
@@ -61,25 +68,24 @@
 | **#2** | **Ticket 2: Window Scanner & Retina Icon Capture** | ✅ **Done** | #1 | Commit `ae6fe0b` ([#2](https://github.com/hertzhzzz/minibar/issues/2)) |
 | **#3** | **Ticket 3: SwiftUI Popover Grid & Lifecycle** | ✅ **Done** | #2 | Commit `5dd199a` ([#3](https://github.com/hertzhzzz/minibar/issues/3)) |
 | **#4** | **Ticket 4: Double-Track Click Proxy Service** | ✅ **Done** | #3 | Commit `fbcfb4f` ([#4](https://github.com/hertzhzzz/minibar/issues/4)) |
-| **#5** | **Ticket 5: Arrange Mode & Drag-to-Toggle** | ✅ **Done（本地未推送）** | #4 | Commit `a5e4ff4` ([#5](https://github.com/hertzhzzz/minibar/issues/5)) |
-| **#6** | **Ticket 6: Launch at Login & Release Polish** | 🚀 **Ready for Agent (当前前沿)** | #5 (已解封，待 push 后 GitHub 关闭 #5) | [#6](https://github.com/hertzhzzz/minibar/issues/6) |
+| **#5** | **Ticket 5: Arrange Mode & Drag-to-Toggle** | ✅ **Done** | #4 | Commit `a5e4ff4` ([#5](https://github.com/hertzhzzz/minibar/issues/5)) |
+| **#6** | **Ticket 6: Launch at Login & Release Polish** | ✅ **Done** | #5 | 见最新 `feat: ... (closes #6)` 提交 ([#6](https://github.com/hertzhzzz/minibar/issues/6)) |
 
 ---
 
 ## 5. 下一个会话执行指引 (Next Session Action Plan)
 
-接手本项目的 Agent 应执行以下步骤：
-1. **先确认是否 push**：本地 `main` 比 `origin/main` 超前 1 个提交（`a5e4ff4`）。用户确认后 `git push`，GitHub 才会因 `closes #5` 关闭 Issue。
-2. **领取前沿任务**：针对 [Issue #6](https://github.com/hertzhzzz/minibar/issues/6) (Launch at Login & Release Polish) 开展工作。
-3. **Ticket 5 实机风险（未在单测覆盖）**：
-   - 合成 ⌘+Drag 目前是 down → 一次 dragged → up，真实菜单栏重排可能需要连续路径。
-   - `CGWindow` 原点在左上，`CGEvent` 在左下；与 Ticket 4 Click Proxy 一致，实机可能偏 Y。
-   - 展开后立刻扫描时，WindowServer 可能尚未把 Divider 写成 8pt。
-4. **不要提交** `.notes/`（本地项目记忆）。
+所有 Ticket 已完成。接手 Agent 应：
+1. **实机验收（未在单测覆盖）**：
+   - `make run` 启动 `.app` 后，在 Popover 勾选 Launch at Login；若状态为 `requiresApproval`，到「系统设置 → 通用 → 登录项」批准。
+   - `SMAppService.mainApp` 只对签名后的 `.app` bundle 有效；`swift run` 裸二进制无法持久化登录项。
+   - 勾选 Quit MiniBar，确认 Divider 恢复 8pt、菜单栏不留幽灵空隙。
+   - Activity Monitor 确认常驻 RSS < 30MB；确认无网络连接。
+   - Ticket 5 残留风险：合成 ⌘+Drag 目前是 down → 一次 dragged → up；CGEvent Y 轴可能偏移。
+2. **不要提交** `.notes/`（本地项目记忆）。
 
 ---
 
 ## 6. Suggested Skills (建议调用的技能)
 - **`handon`**：新会话启动或 `/clear` 后，自动重新加载本交接文档与上下文。
-- **`implement`**：领取 Ticket 6 后按 TDD 实现开机自启与发布打磨。
-- **`code-review`**：合入前对 Ticket 6 的 `SMAppService` 与发布配置做双轴审查。
+- **`code-review`**：若继续改动，合入前做 Standards / Spec 双轴审查。
