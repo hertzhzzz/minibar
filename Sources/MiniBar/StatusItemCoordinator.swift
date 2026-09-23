@@ -1,5 +1,6 @@
 import Foundation
 import CoreGraphics
+import AppKit
 
 /// One status item hosted in the system status bar (Control Item or Divider Item).
 @MainActor
@@ -7,6 +8,7 @@ public protocol StatusItemHandle: AnyObject {
     var length: CGFloat { get set }
     var symbolName: String? { get set }
     var action: (() -> Void)? { get set }
+    var rawButton: NSStatusBarButton? { get }
 }
 
 /// Seam over `NSStatusBar.system` so tests never touch the real status bar / WindowServer.
@@ -28,12 +30,17 @@ public let controlItemLength: CGFloat = 24
 @MainActor
 public final class StatusItemCoordinator {
     private let statusBar: StatusBarInstalling
+    private let popoverCoordinator: PopoverCoordinator?
     private(set) public var controlItem: StatusItemHandle?
     private(set) public var dividerItem: StatusItemHandle?
     private var isFolded = true
 
-    public init(statusBar: StatusBarInstalling) {
+    public init(
+        statusBar: StatusBarInstalling,
+        popoverCoordinator: PopoverCoordinator? = nil
+    ) {
         self.statusBar = statusBar
+        self.popoverCoordinator = popoverCoordinator
     }
 
     /// Creates the Control Item first, then the Divider Item, so the Divider Item
@@ -42,9 +49,13 @@ public final class StatusItemCoordinator {
         let control = statusBar.makeStatusItem(length: controlItemLength)
         control.symbolName = "menubar.dock.rectangle"
         control.action = { [weak self] in
-            self?.toggle()
+            self?.handleClick()
         }
         controlItem = control
+
+        if let button = control.rawButton {
+            popoverCoordinator?.setAnchorButton(button)
+        }
 
         let divider = statusBar.makeStatusItem(length: dividerFoldedLength)
         divider.symbolName = nil
@@ -53,7 +64,13 @@ public final class StatusItemCoordinator {
         isFolded = true
     }
 
-    /// Called on a Control Item click. Toggles Spacer Push: Folded (10_000) <-> Expanded (8).
+    /// Handles click on the Control Item: toggles the popover and spacer push state.
+    public func handleClick() {
+        popoverCoordinator?.toggle()
+        toggle()
+    }
+
+    /// Called to toggle Spacer Push: Folded (10_000) <-> Expanded (8).
     public func toggle() {
         isFolded.toggle()
         dividerItem?.length = isFolded ? dividerFoldedLength : dividerExpandedLength

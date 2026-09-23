@@ -1,5 +1,6 @@
 import Foundation
 import CoreGraphics
+import AppKit
 import Testing
 @testable import MiniBar
 
@@ -8,6 +9,7 @@ final class FakeStatusItemHandle: StatusItemHandle {
     var length: CGFloat
     var symbolName: String?
     var action: (() -> Void)?
+    var rawButton: NSStatusBarButton? = nil
 
     init(length: CGFloat) {
         self.length = length

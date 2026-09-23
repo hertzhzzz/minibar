@@ -22,6 +22,10 @@ final class NSStatusItemHandleAdapter: NSObject, StatusItemHandle {
         set { statusItem.length = newValue }
     }
 
+    var rawButton: NSStatusBarButton? {
+        statusItem.button
+    }
+
     var symbolName: String? {
         didSet {
             guard let symbolName else {
